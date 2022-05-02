@@ -2,6 +2,8 @@
 // 
 // Author: Yannick Méheut (ymeheut@almond.consulting)
 //
+// Accompanying blog post: https://offsec.almond.consulting/authenticating-with-certificates-when-pkinit-is-not-supported.html
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at

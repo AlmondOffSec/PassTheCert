@@ -5,6 +5,8 @@
 This tool is a C# Proof-of-Concept allowing an attacker to use a certificate
 to authenticate to an LDAP/S server through Schannel.
 
+More information in the [accompanying blog post](https://offsec.almond.consulting/authenticating-with-certificates-when-pkinit-is-not-supported.html).
+
 ## Building
 
 Simply build the solution with Visual Studio.

@@ -2,6 +2,8 @@
 #
 # Almond (almond.consulting). Copyright (C) 2022 Almond. All rights reserved.
 #
+# Accompanying blog post: https://offsec.almond.consulting/authenticating-with-certificates-when-pkinit-is-not-supported.html
+#
 # This software is provided under a slightly modified version
 # of the Apache Software License. See the accompanying LICENSE file
 # for more information.

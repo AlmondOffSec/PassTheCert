@@ -1,7 +1,14 @@
 PassTheCert.py
 ==============
 
-This POC implements LDAP certificate authentication for two impacket scripts : [addcomputer.py](https://github.com/SecureAuthCorp/impacket/blob/master/examples/addcomputer.py) and [rbcd.py](https://github.com/SecureAuthCorp/impacket/blob/master/examples/rbcd.py). You can perform LDAP certificate authentication both on port 686 and 389 (via a StarTLS command). Please note that you need a functional LDAPS service on the targeted domain controller to successfully use StartTLS on the LDAP port.
+This POC implements LDAP certificate authentication for two impacket scripts:
+[addcomputer.py](https://github.com/SecureAuthCorp/impacket/blob/master/examples/addcomputer.py)
+and [rbcd.py](https://github.com/SecureAuthCorp/impacket/blob/master/examples/rbcd.py).
+You can perform LDAP certificate authentication both on port 686 and 389 (via a
+StarTLS command). Please note that you need a functional LDAPS service on the
+targeted domain controller to successfully use StartTLS on the LDAP port.
+
+More information in the [accompanying blog post](https://offsec.almond.consulting/authenticating-with-certificates-when-pkinit-is-not-supported.html).
 
 If you use [Certipy](https://github.com/ly4k/Certipy) to retrieve certificates, you can extract key and cert from the pfx by using:
 
