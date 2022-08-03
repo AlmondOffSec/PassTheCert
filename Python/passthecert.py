@@ -250,7 +250,7 @@ class RBCD(object):
             return dn, sid
         except IndexError:
             logging.error('User not found in LDAP: %s' % samname)
-            return False
+            return '[Could not resolve SID]', '[Could not resolve SID]'
 
     def get_sid_info(self, sid):
         self.ldap_session.search(self.domain_dumper.root, '(objectSid=%s)' % ldap3.utils.conv.escape_filter_chars(sid), attributes=['samaccountname'])
