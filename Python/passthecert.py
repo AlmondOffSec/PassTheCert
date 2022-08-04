@@ -250,7 +250,7 @@ class RBCD(object):
             return dn, sid
         except IndexError:
             logging.error('User not found in LDAP: %s' % samname)
-            return '[Could not resolve SID]', '[Could not resolve SID]'
+            return False
 
     def get_sid_info(self, sid):
         self.ldap_session.search(self.domain_dumper.root, '(objectSid=%s)' % ldap3.utils.conv.escape_filter_chars(sid), attributes=['samaccountname'])
@@ -260,7 +260,7 @@ class RBCD(object):
             return dn, samname
         except IndexError:
             logging.error('SID not found in LDAP: %s' % sid)
-            return False
+            return '[Could not resolve SID]', '[Could not resolve SID]'
 
 class ManageComputer:
     def __init__(self, ldapConn, cmdLineOptions):
