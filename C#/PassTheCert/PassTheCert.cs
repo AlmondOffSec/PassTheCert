@@ -216,6 +216,22 @@ namespace PassTheCert
             SetAttribute(connection, target, attribute, new_security_descriptor);
         }
 
+        static void Whoami(LdapConnection connection)
+        {
+            ExtendedRequest whoami_req = new ExtendedRequest("1.3.6.1.4.1.4203.1.11.3");
+
+            try
+            {
+                ExtendedResponse whoami_resp = (ExtendedResponse)connection.SendRequest(whoami_req);
+                Console.Write("Querying LDAP As : ");
+                Console.WriteLine(System.Text.Encoding.UTF8.GetString(whoami_resp.ResponseValue, 0, whoami_resp.ResponseValue.Length));
+            }
+            catch (DirectoryOperationException e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+        }
+
         static void ElevateUserAttack(LdapConnection connection, string target, string sid, string restore_file)
         {
             AccessControlEntry[] new_aces = new AccessControlEntry[2];
@@ -318,6 +334,8 @@ namespace PassTheCert
             Console.WriteLine("\t\tPassword to the certificate (Optional argument. Default value: <empty>).");
             Console.WriteLine("\n");
             Console.WriteLine("ATTACK TYPE:");
+            Console.WriteLine("\t--whoami");
+            Console.WriteLine("\t\tQuery LDAP whoami to check if strict validation is being checked");
             Console.WriteLine("\t--elevate");
             Console.WriteLine("\t\tElevate the rights of a user on the domain. Will grant DS-Replication-Get-Changes and DS-Replication-Get-Changes-All rights.");
             Console.WriteLine("\t--rbcd");
@@ -420,6 +438,9 @@ namespace PassTheCert
                         break;
 
                     // Attack type
+                    case "--whoami":
+                        attack_type = "whoami";
+                        break;
                     case "--elevate":
                         attack_type = "elevate";
                         break;
@@ -487,6 +508,9 @@ namespace PassTheCert
 
             switch (attack_type)
             {
+                case "whoami":
+                    Whoami(connection);
+                    break;
                 case "elevate":
                     ElevateUserAttack(connection, target, sid, restore_file);
                     break;
