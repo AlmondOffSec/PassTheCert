@@ -76,6 +76,9 @@ Actions
   * `remove_rbcd`: Remove specific entries
   * `flush_rbcd`: Flush all entries
 
+* Misc
+  * `whoami`: Return the user represented by the certificate
+
 Examples
 --------
 

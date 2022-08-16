@@ -305,7 +305,11 @@ class ManageComputer:
         logging.debug('The new computer will be added in %s' % self.__computerGroup)
 
     def whoami(self):
-        logging.info('You are logged in as: %s' % self.ldapConn.extend.standard.who_am_i())
+        current_user = self.ldapConn.extend.standard.who_am_i()
+        if current_user == None:
+            raise Exception('whoami command failed, certificate seems not trusted by the Active Directory')
+        # LDAP whoami returns an authzId, so we strip the prefix
+        logging.info('You are logged in as: %s' % current_user[2:])
 
     def add_computer(self):
         if self.__computerName is not None:
