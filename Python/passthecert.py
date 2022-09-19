@@ -338,11 +338,11 @@ class ManageComputer:
             if ldapConn.result['result'] == ldap3.core.results.RESULT_UNWILLING_TO_PERFORM:
                 error_code = int(ldapConn.result['message'].split(':')[0].strip(), 16)
                 if error_code == 0x216D:
-                    raise Exception("User %s machine quota exceeded!" % self.__username)
+                    raise Exception("User machine quota exceeded!")
                 else:
                     raise Exception(str(ldapConn.result))
             elif ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
-                raise Exception("User %s doesn't have right to create a machine account!" % self.__username)
+                raise Exception("User doesn't have right to create a machine account!")
             else:
                 raise Exception(str(ldapConn.result))
         else:
@@ -356,7 +356,7 @@ class ManageComputer:
         res = ldapConn.delete(computer.entry_dn)
         if not res:
             if ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
-                raise Exception("User %s doesn't have right to delete %s!" % (self.__username, self.__computerName))
+                raise Exception("User doesn't have right to delete %s!" % (self.__computerName))
             else:
                 raise Exception(str(ldapConn.result))
         else:
@@ -370,7 +370,7 @@ class ManageComputer:
         res = ldapConn.modify(computer.entry_dn, {'unicodePwd': [(ldap3.MODIFY_REPLACE, ['"{}"'.format(self.__computerPassword).encode('utf-16-le')])]})
         if not res:
             if ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
-                raise Exception("User %s doesn't have right to modify %s!" % (self.__username, self.__computerName))
+                raise Exception("User doesn't have right to modify %s!" % (self.__computerName))
             else:
                 raise Exception(str(ldapConn.result))
         else:
