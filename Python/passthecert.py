@@ -304,6 +304,13 @@ class ManageComputer:
 
         logging.debug('The new computer will be added in %s' % self.__computerGroup)
 
+    def whoami(self):
+        current_user = self.ldapConn.extend.standard.who_am_i()
+        if current_user == None:
+            raise Exception('whoami command failed, certificate seems not trusted by the Active Directory')
+        # LDAP whoami returns an authzId, so we strip the prefix
+        logging.info('You are logged in as: %s' % current_user[2:])
+
     def add_computer(self):
         if self.__computerName is not None:
             if self.LDAPComputerExists(ldapConn, self.__computerName):
@@ -400,7 +407,7 @@ if __name__ == '__main__':
                        help='Destination port to connect to. LDAPS (via StartTLS) on 386 or LDAPS on 636.')
 
     group = parser.add_argument_group('Action')
-    group.add_argument('-action', choices=['add_computer', 'del_computer', 'modify_computer', 'read_rbcd', 'write_rbcd', 'remove_rbcd', 'flush_rbcd'], nargs='?', default='add_computer')
+    group.add_argument('-action', choices=['add_computer', 'del_computer', 'modify_computer', 'read_rbcd', 'write_rbcd', 'remove_rbcd', 'flush_rbcd', 'whoami'], nargs='?', default='whoami')
     
     group = parser.add_argument_group('Manage Computer')
     group.add_argument('-baseDN', action='store', metavar='DC=test,DC=local', help='Set baseDN for LDAP.'
@@ -487,7 +494,7 @@ if __name__ == '__main__':
             # Using bind() function will raise an error, we just have to open() the connection
             ldapConn.open()
 
-        if options.action in ('add_computer','del_computer','modify_computer'):
+        if options.action in ('add_computer','del_computer','modify_computer', 'whoami'):
             manage = ManageComputer(ldapConn, options)
             if options.action == 'add_computer':
                 manage.add_computer()
@@ -495,6 +502,8 @@ if __name__ == '__main__':
                 manage.delete_computer()
             elif options.action == 'modify_computer':
                 manage.modify_computer()
+            elif options.action == 'whoami':
+                manage.whoami()
 
         else:
             if options.delegate_to is None:
