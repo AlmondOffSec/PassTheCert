@@ -30,6 +30,8 @@ GENERAL OPTIONS:
                 Password to the certificate (Optional argument. Default value: <empty>).
 
 ATTACK TYPE:
+        --whoami
+                Query LDAP whoami to check if strict validation is being checked
         --elevate
                 Elevate the rights of a user on the domain. Will grant DS-Replication-Get-Changes and DS-Replication-Get-Changes-All rights.
         --rbcd
@@ -38,6 +40,15 @@ ATTACK TYPE:
                 Add a new computer to the domain (useful for RBCD attacks).
         --reset-password
                 Reset the password of the targeted account (requires the User-Force-Change-Password right).
+```
+
+### Whoami
+
+There's no options for this attack. Here's an example of usage:
+
+```console
+C:\> .\PassTheCert.exe --server srv-ad.contoso.com --cert-path Z:\skywalker.pfx --whoami
+Querying LDAP As : u:CONTOSO\skywalker
 ```
 
 ### Elevate user
