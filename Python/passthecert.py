@@ -359,6 +359,8 @@ class ManageComputer:
                     raise Exception(str(ldapConn.result))
             elif ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
                 raise Exception("User doesn't have right to create a machine account!")
+            elif ldapConn.result['result'] == ldap3.core.results.RESULT_CONSTRAINT_VIOLATION:
+                raise Exception("User doesn't have right to create contrained delegations!")
             else:
                 raise Exception(str(ldapConn.result))
         else:
