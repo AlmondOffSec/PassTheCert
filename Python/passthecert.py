@@ -262,6 +262,61 @@ class RBCD(object):
             logging.error('SID not found in LDAP: %s' % sid)
             return '[Could not resolve SID]', '[Could not resolve SID]'
 
+
+class ManageUserPWD:
+    def __init__(self, ldapConn, cmdLineOptions):
+        self.ldapConn = ldapConn
+        self.__accountName = cmdLineOptions.account_name
+        self.__newPassword = cmdLineOptions.new_pass
+        self.__domain = cmdLineOptions.domain
+        self.__baseDN = cmdLineOptions.baseDN
+        
+        if self.__newPassword is None:
+            self.__newPassword = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
+        
+        if self.__baseDN is None:
+             # Create the baseDN
+            domainParts = self.__domain.split('.')
+            self.__baseDN = ''
+            for i in domainParts:
+                self.__baseDN += 'dc=%s,' % i
+            # Remove last ','
+            self.__baseDN = self.__baseDN[:-1]
+
+        if not '.' in self.__domain:
+            logging.warning('\'%s\' doesn\'t look like a FQDN. Generating baseDN will probably fail.' % self.__domain)
+
+    def LDAPUserExists(self, accountName):
+        return self.LDAPGetUser(accountName)
+
+    def LDAPGetUser(self, accountName):
+        self.ldapConn.search(self.__baseDN, '(sAMAccountName=%s)' % ldap3.utils.conv.escape_filter_chars(accountName))
+        try:
+            dn = self.ldapConn.entries[0].entry_dn
+            return dn
+        except IndexError:
+            logging.error('User not found in LDAP: %s' % accountName)
+            return False
+
+    def changePW(self):
+        if not self.LDAPUserExists(self.__accountName):
+            raise Exception("sAMAccountName %s not found in %s!" % (self.__accountName, self.__baseDN))
+
+        targetDN = self.LDAPGetUser(self.__accountName)
+        res = self.ldapConn.modify(targetDN, {'unicodePwd': [(ldap3.MODIFY_REPLACE, ['"{}"'.format(self.__newPassword).encode('utf-16-le')])]})
+        if not res:
+            if self.ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
+                raise Exception("User doesn't have right to modify %s!" % (targetDN))
+            elif self.ldapConn.result['result'] == ldap3.core.results.RESULT_NO_SUCH_OBJECT:
+                raise Exception("Target DN '%s' is not correct!" % (targetDN))
+            elif self.ldapConn.result['result'] == ldap3.core.results.RESULT_UNWILLING_TO_PERFORM:
+                raise Exception("Unwilling to Perform: %s" % (self.ldapConn.result['message']))               
+            else:
+                raise Exception(str(self.ldapConn.result))
+        else:
+            logging.info("Successfully changed %s password to: %s" % (self.__accountName, self.__newPassword))
+
+
 class ManageComputer:
     def __init__(self, ldapConn, cmdLineOptions):
         self.options = cmdLineOptions
@@ -418,7 +473,11 @@ if __name__ == '__main__':
                        help='Destination port to connect to. LDAPS (via StartTLS) on 386 or LDAPS on 636.')
 
     group = parser.add_argument_group('Action')
-    group.add_argument('-action', choices=['add_computer', 'del_computer', 'modify_computer', 'read_rbcd', 'write_rbcd', 'remove_rbcd', 'flush_rbcd', 'whoami'], nargs='?', default='whoami')
+    group.add_argument('-action', choices=['add_computer', 'del_computer', 'modify_computer', 'read_rbcd', 'write_rbcd', 'remove_rbcd', 'flush_rbcd', 'forcePWDchange', 'whoami'], nargs='?', default='whoami')
+
+    group = parser.add_argument_group('Password Reset')
+    group.add_argument('-account-name', action='store', metavar='sAMAccountName', help='sAMAccountName of user to target.')
+    group.add_argument('-new-pass', action='store', metavar='password', help='New password of target.')
 
     group = parser.add_argument_group('Manage Computer')
     group.add_argument('-baseDN', action='store', metavar='DC=test,DC=local', help='Set baseDN for LDAP.'
@@ -505,6 +564,11 @@ if __name__ == '__main__':
             # An EXTERNAL bind is not allowed, and the bind will be rejected with an error."
             # Using bind() function will raise an error, we just have to open() the connection
             ldapConn.open()
+        
+        if options.action in ('forcePWDchange'):
+            manage = ManageUserPWD(ldapConn, options)
+            manage.changePW()
+            sys.exit(1)
 
         if options.action in ('add_computer','del_computer','modify_computer', 'whoami'):
             manage = ManageComputer(ldapConn, options)
