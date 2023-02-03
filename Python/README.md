@@ -21,11 +21,10 @@ Usage
 -----
 
 ```
-Impacket v0.9.22 - Copyright 2020 SecureAuth Corporation
+Impacket v0.10.0 - Copyright 2022 SecureAuth Corporation
 
-usage: passthecert.py [-h] [-debug] [-port {389,636}] [-action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd}]] [-baseDN DC=test,DC=local]
-                      [-computer-group CN=Computers] [-domain test.local] [-domain-netbios NETBIOSNAME] [-computer-name COMPUTER-NAME$] [-computer-pass password] [-delegate-to DELEGATE_TO]
-                      [-delegate-from DELEGATE_FROM] [-dc-host hostname] [-dc-ip ip] -crt user.crt -key user.key
+usage: passthecert.py [-h] [-debug] [-port {389,636}] [-action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd,forcePWDchange,whoami}]] [-account-name sAMAccountName] [-new-pass password] [-baseDN DC=test,DC=local] [-computer-group CN=Computers] [-domain test.local] [-domain-netbios NETBIOSNAME] [-computer-name COMPUTER-NAME$] [-computer-pass password]
+                      [-delegated-services cifs/srv01.domain.local,ldap/srv01.domain.local] [-delegate-to DELEGATE_TO] [-delegate-from DELEGATE_FROM] [-dc-host hostname] [-dc-ip ip] -crt user.crt -key user.key
 
 Manage domain computers and perform RBCD attack via LDAP certificate authentication
 
@@ -35,22 +34,28 @@ optional arguments:
   -port {389,636}       Destination port to connect to. LDAPS (via StartTLS) on 386 or LDAPS on 636.
 
 Action:
-  -action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd}]
+  -action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd,forcePWDchange,whoami}]
+
+Password Reset:
+  -account-name sAMAccountName
+                        sAMAccountName of user to target.
+  -new-pass password    New password of target.
 
 Manage Computer:
   -baseDN DC=test,DC=local
                         Set baseDN for LDAP.If ommited, the domain part (FQDN) specified in the account parameter will be used.
   -computer-group CN=Computers
-                        Group to which the account will be added. If omitted, CN=Computers will be used,
+                        Group to which the account will be added.If omitted, CN=Computers will be used,
   -domain test.local    Target domain fqdn
   -domain-netbios NETBIOSNAME
                         Domain NetBIOS name. Required if the DC has multiple domains.
   -computer-name COMPUTER-NAME$
                         Name of computer to add.If omitted, a random DESKTOP-[A-Z0-9]{8} will be used.
   -computer-pass password
-                        Password to set to computerIf omitted, a random [A-Za-z0-9]{32} will be used.
-  -delegated-services PROTO/FQDN,...
-                        Constrained delegated services to configure in the new computer object (no space in the list).
+                        Password to set to computer. If omitted, a random [A-Za-z0-9]{32} will be used.
+  -delegated-services cifs/srv01.domain.local,ldap/srv01.domain.local
+                        Services to configure in constrained delegation to configure to the new computer (no space in the list)
+
 RBCD attack:
   -delegate-to DELEGATE_TO
                         Target computer account the attacker has at least WriteProperty to
@@ -66,22 +71,22 @@ Authentication:
 
 Actions
 -------
-* Manage Comuter
+* Manage Computer
   * `add_computer`: Add a computer to the domain
   * `del_computer`: Delete a computer from the domain
   * `modify_computer`: Modify the password of the computer
 
+* Manage User
+  * `forcePWDchange` : Modify the password of the user
 
 * Constrained delegation attack
   * `add_computer -delegated-services`: Add a computer configured with constrained delegated services store in `msDS-AllowedToDelegateTo` new computer's attributes.
-
 
 * RBCD attack
   * `read_rbcd`: Read `msDS-AllowedToActOnBehalfOfOtherIdentity` and resolve SIDs to `sAMaccountnames`
   * `write_rbcd`: Write new SIDs to `the msDS-AllowedToActOnBehalfOfOtherIdentity`
   * `remove_rbcd`: Remove specific entries
   * `flush_rbcd`: Flush all entries
-
 
 * Misc
   * `whoami`: Return the user represented by the certificate
