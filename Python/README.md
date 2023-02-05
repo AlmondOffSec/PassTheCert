@@ -47,7 +47,7 @@ Manage User:
   -elevate                              Grant target account DCSYNC rights
 
 Manage Computer:
-  -baseDN             DC=test,DC=local  Set baseDN for LDAP.If ommited, the domain part (FQDN) specified in the account parameter will be used.
+  -baseDN             DC=test,DC=local  Set baseDN for LDAP.If omitted, the domain part (FQDN) specified in the account parameter will be used.
   -computer-group     CN=Computers      Group to which the account will be added.If omitted, CN=Computers will be used,
   -domain             test.local        Target domain fqdn
   -domain-netbios     NETBIOSNAME       Domain NetBIOS name. Required if the DC has multiple domains.
@@ -60,7 +60,7 @@ RBCD attack:
   -delegate-from      DELEGATE_FROM     Attacker controlled machine account to write on the msDS-Allo[...] property (only when using `-action write`)
 
 Authentication:
-  -dc-host hostname     Hostname of the domain controller to use. If ommited, the domain part (FQDN) specified in the account
+  -dc-host hostname     Hostname of the domain controller to use. If omitted, the domain part (FQDN) specified in the account
                         parameter will be used
   -dc-ip ip             IP of the domain controller to use. Useful if you can't translate the FQDN.
   -crt user.crt         User's certificate

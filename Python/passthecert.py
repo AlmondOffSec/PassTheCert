@@ -529,7 +529,7 @@ if __name__ == '__main__':
 
     group = parser.add_argument_group('Manage Computer')
     group.add_argument('-baseDN', action='store', metavar='DC=test,DC=local', help='Set baseDN for LDAP.'
-                                                                                    'If ommited, the domain part (FQDN) '
+                                                                                    'If omitted, the domain part (FQDN) '
                                                                                     'specified in the account parameter will be used.')
     group.add_argument('-computer-group', action='store', metavar='CN=Computers', help='Group to which the account will be added.'
                                                                                         'If omitted, CN=Computers will be used,')
@@ -550,7 +550,7 @@ if __name__ == '__main__':
 
     group = parser.add_argument_group('Authentication')
     group.add_argument('-dc-host', action='store',metavar = "hostname",  help='Hostname of the domain controller to use. '
-                                                                              'If ommited, the domain part (FQDN) '
+                                                                              'If omitted, the domain part (FQDN) '
                                                                               'specified in the account parameter will be used')
     group.add_argument('-dc-ip', action='store',metavar = "ip",  help='IP of the domain controller to use. '
                                                                       'Useful if you can\'t translate the FQDN.')
@@ -623,7 +623,7 @@ if __name__ == '__main__':
             elif options.new_pass is not None:
                 manage.changePWD(options.new_pass)
             else:
-                logging.critical('User modification option (-elevate|-changePWD) needed!')
+                logging.critical('User modification option (-elevate|-new-pass) needed!')
 
         elif options.action in ('add_computer','del_computer','modify_computer', 'whoami'):
             manage = ManageComputer(ldapConn, options)
