@@ -37,9 +37,48 @@ import ldapdomaindump
 
 from impacket import version
 from impacket.examples import logger
+from impacket.examples.ldap_shell import LdapShell as _LdapShell
 from impacket.ldap import ldaptypes
 from impacket.uuid import string_to_bin
 
+class LdapShell(_LdapShell):
+    def __init__(self, tcp_shell, domain_dumper, client):
+        super().__init__(tcp_shell, domain_dumper, client)
+
+        self.use_rawinput = True
+        self.shell = tcp_shell
+
+        self.prompt = "\n# "
+        self.tid = None
+        self.intro = "Type help for list of commands"
+        self.loggedIn = True
+        self.last_output = None
+        self.completion = []
+        self.client = client
+        self.domain_dumper = domain_dumper
+
+    def do_dump(self, line):
+        logging.warning("Not implemented")
+
+    def do_exit(self, line):
+        print("Bye!")
+        return True
+
+
+class DummyDomainDumper:
+    def __init__(self, root: str):
+        self.root = root
+
+
+def ldap_shell(ldap_server, ldap_conn):
+    root = ldap_server.info.other["defaultNamingContext"][0]
+    domain_dumper = DummyDomainDumper(root)
+    ldap_shell = LdapShell(sys, domain_dumper, ldap_conn)
+    try:
+        ldap_shell.cmdloop()
+    except KeyboardInterrupt:
+        print("Bye!\n")
+        pass
 
 
 def create_empty_sd():
@@ -520,7 +559,7 @@ if __name__ == '__main__':
                        help='Destination port to connect to. LDAPS (via StartTLS) on 386 or LDAPS on 636.')
 
     group = parser.add_argument_group('Action')
-    group.add_argument('-action', choices=['add_computer', 'del_computer', 'modify_computer', 'read_rbcd', 'write_rbcd', 'remove_rbcd', 'flush_rbcd', 'modify_user', 'whoami'], nargs='?', default='whoami')
+    group.add_argument('-action', choices=['add_computer', 'del_computer', 'modify_computer', 'read_rbcd', 'write_rbcd', 'remove_rbcd', 'flush_rbcd', 'modify_user', 'whoami', 'ldap-shell'], nargs='?', default='whoami')
 
     group = parser.add_argument_group('Manage User')
     group.add_argument('-target', action='store', metavar='sAMAccountName', help='sAMAccountName of user to target.')
@@ -625,7 +664,7 @@ if __name__ == '__main__':
             else:
                 logging.critical('User modification option (-elevate|-new-pass) needed!')
 
-        elif options.action in ('add_computer','del_computer','modify_computer', 'whoami'):
+        elif options.action in ('add_computer','del_computer','modify_computer', 'whoami', 'ldap-shell'):
             manage = ManageComputer(ldapConn, options)
             if options.action == 'add_computer':
                 manage.add_computer(options.delegated_services)
@@ -635,6 +674,8 @@ if __name__ == '__main__':
                 manage.modify_computer()
             elif options.action == 'whoami':
                 manage.whoami()
+            elif options.action == "ldap-shell":
+                ldap_shell(ldapServer, ldapConn)
 
         else:
             if options.delegate_to is None:

