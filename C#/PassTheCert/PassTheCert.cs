@@ -443,9 +443,9 @@ namespace PassTheCert
             Console.WriteLine("\t--account ACCOUNT");
             Console.WriteLine("\t\tThe account added to the group. Should be the distinguished name of the account.");
             Console.WriteLine("\n\n");
-            Console.WriteLine("TOGGLE ENABLE USER ACCOUNT OPTIONS: --target TARGET --toggle-enabled");
-            Console.WriteLine("\t--target TARGET");
-            Console.WriteLine("\t\tTarget of the attack. Should be the distinguished name of the user account.");
+            Console.WriteLine("TOGGLE ENABLE USER ACCOUNT OPTIONS: --account ACCOUNT --toggle-enabled");
+            Console.WriteLine("\t--account ACCOUNT");
+            Console.WriteLine("\t\tThe account added enabled/disabled. Should be the distinguished name of the account.");
             Console.WriteLine("\n\n");
             Console.WriteLine("Examples:\n");
             Console.WriteLine("PassTheCert.exe --server ad.contoso.com --cert-path C:\\exchange_server.pfx --elevate --target DC=contoso,DC=com --sid S-1-5-21-453406510-812318184-4183662089-1337");
@@ -612,10 +612,10 @@ namespace PassTheCert
                     AddAccountToGroupAttack(connection, target, account);
                     break;
                 case "toggle_enabled":
-                    ToggleAccountStatus(connection, target);
+                    ToggleAccountStatus(connection, account);
                     break;
                 default:
-                    Console.WriteLine("Attack type not supported, choose one between --elevate, --rbcd, --add-computer, --reset-password, and --add-account-to-group.\n");
+                    Console.WriteLine("Attack type not supported, choose one between --elevate, --rbcd, --add-computer, --reset-password, --toggle-enabled, and --add-account-to-group.\n");
                     PrintHelp(1);
                     break;
             }
