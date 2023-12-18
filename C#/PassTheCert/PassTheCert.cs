@@ -443,7 +443,7 @@ namespace PassTheCert
             Console.WriteLine("\t--account ACCOUNT");
             Console.WriteLine("\t\tThe account added to the group. Should be the distinguished name of the account.");
             Console.WriteLine("\n\n");
-            Console.WriteLine("TOGGLE ENABLE USER ACCOUNT OPTIONS: --account ACCOUNT --toggle-enabled");
+            Console.WriteLine("TOGGLE ENABLE USER ACCOUNT OPTIONS: --account ACCOUNT");
             Console.WriteLine("\t--account ACCOUNT");
             Console.WriteLine("\t\tThe account added enabled/disabled. Should be the distinguished name of the account.");
             Console.WriteLine("\n\n");

