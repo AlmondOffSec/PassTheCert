@@ -397,7 +397,7 @@ namespace PassTheCert
 
         static void PrintHelp(int exit_code)
         {
-            Console.WriteLine("PassTheCert.exe [--help] --server DOMAIN_CONTROLLER [--start-tls] --cert-path CERT_PATH [--cert-password CERT_PASSWORD] (--elevate|--rbcd|--add-computer|--reset-password|--add-account-to-group) [ATTACK_OPTIONS]");
+            Console.WriteLine("PassTheCert.exe [--help] --server DOMAIN_CONTROLLER [--start-tls] --cert-path CERT_PATH [--cert-password CERT_PASSWORD] (--elevate|--rbcd|--add-computer|--set-spn|--reset-password|--add-account-to-group) [ATTACK_OPTIONS]");
             Console.WriteLine("GENERAL OPTIONS:");
             Console.WriteLine("\t--server DOMAIN_CONTROLLER");
             Console.WriteLine("\t\tDomain controller to connect to. By default, connection will be done over TCP/636 (LDAPS).");
@@ -446,6 +446,13 @@ namespace PassTheCert
             Console.WriteLine("\t--computer-password COMPUTER_PASSWORD");
             Console.WriteLine("\t\tThe password of the new computer (Optional argument. Default value: <random value>).");
             Console.WriteLine("\n\n");
+            Console.WriteLine("ADD SPN ATTACK: --target TARGET --account ACCOUNT");
+            Console.WriteLine("\t--target TARGET");
+            Console.WriteLine("\t\tA SPN in the form of service/host. Does not need to be real or exist to pull a TGS");
+            Console.WriteLine("\t--account ACCOUNT");
+            Console.WriteLine("\t\tThe account added to the group. Should be the distinguished name of the account.");
+            Console.WriteLine("\t Also supported: --unset-spn to cleanup");
+            Console.WriteLine("\n\n");
             Console.WriteLine("RESET PASSWORD ATTACK OPTIONS: --target TARGET [--new-password NEW_PASSWORD]");
             Console.WriteLine("\t--target TARGET");
             Console.WriteLine("\t\tTarget of the attack. Should be the distinguished name of the account.");
@@ -457,6 +464,7 @@ namespace PassTheCert
             Console.WriteLine("\t\tTarget of the attack. Should be the distinguished name of the group.");
             Console.WriteLine("\t--account ACCOUNT");
             Console.WriteLine("\t\tThe account added to the group. Should be the distinguished name of the account.");
+            Console.WriteLine("\t Also supported: --remove-user-from-group to cleanup");
             Console.WriteLine("\n\n");
             Console.WriteLine("TOGGLE ENABLE USER ACCOUNT OPTIONS: --account ACCOUNT");
             Console.WriteLine("\t--account ACCOUNT");
