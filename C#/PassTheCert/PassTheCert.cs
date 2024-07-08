@@ -415,12 +415,18 @@ namespace PassTheCert
             Console.WriteLine("\t\tElevate the rights of a user on the domain. Will grant DS-Replication-Get-Changes and DS-Replication-Get-Changes-All rights.");
             Console.WriteLine("\t--rbcd");
             Console.WriteLine("\t\tAdds an SID to the msDS-AllowedToActOnBehalfOfOtherIdentity arttribute of the target.");
+            Console.WriteLine("\t--set-spn");
+            Console.WriteLine("\t\tAdds a SPN to the given target account to allow you to request a TGS for the user (Kerberoasting)");
+            Console.WriteLine("\t--unset-spn");
+            Console.WriteLine("\t\tRemove a SPN from the given target account after you have requested the TGS");
             Console.WriteLine("\t--add-computer");
             Console.WriteLine("\t\tAdd a new computer to the domain (useful for RBCD attacks).");
             Console.WriteLine("\t--reset-password");
             Console.WriteLine("\t\tReset the password of the targeted account (requires the User-Force-Change-Password right).");
             Console.WriteLine("\t--add-account-to-group");
             Console.WriteLine("\t\tAdd an account to the given group.");
+            Console.WriteLine("\t--remove-account-from-group");
+            Console.WriteLine("\t\tRemove an account from the given group.");
             Console.WriteLine("\n");
             Console.WriteLine("ELEVATE ATTACK OPTIONS: --target TARGET (--sid SID|--restore RESTORE_FILE)");
             Console.WriteLine("\t--target TARGET");
