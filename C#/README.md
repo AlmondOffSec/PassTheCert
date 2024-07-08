@@ -44,6 +44,8 @@ ATTACK TYPE:
                 Add a new computer to the domain (useful for RBCD attacks).
         --reset-password
                 Reset the password of the targeted account (requires the User-Force-Change-Password right).
+        --toggle-enabled
+                Toggle a user account from disabled to enabled, or enabled to disabled.
         --add-account-to-group
                 Add an account to the given group.
         --remove-account-from-group

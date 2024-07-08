@@ -662,7 +662,7 @@ namespace PassTheCert
                     ToggleAccountStatus(connection, account);
                     break;
                 default:
-                    Console.WriteLine("Attack type not supported, choose one between --elevate, --rbcd, --add-computer, --reset-password, --toggle-enabled, --add-account-to-group, and --remove-account-from-group.\n");
+                    Console.WriteLine("Attack type not supported, choose one between --elevate, --rbcd, --add-computer, --reset-password, --toggle-enabled, --add-account-to-group, --remove-account-from-group, --set-spn and --unset-spn.\n");
                     PrintHelp(1);
                     break;
             }
