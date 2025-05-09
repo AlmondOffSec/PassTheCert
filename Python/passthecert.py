@@ -556,7 +556,7 @@ if __name__ == '__main__':
     parser.add_argument('-debug', action='store_true', help='Turn DEBUG output ON')
 
     parser.add_argument('-port', type=int, choices=[389, 636], default=636,
-                       help='Destination port to connect to. LDAPS (via StartTLS) on 386 or LDAPS on 636.')
+                       help='Destination port to connect to. LDAPS (via StartTLS) on 389 or LDAPS on 636.')
 
     group = parser.add_argument_group('Action')
     group.add_argument('-action', choices=['add_computer', 'del_computer', 'modify_computer', 'read_rbcd', 'write_rbcd', 'remove_rbcd', 'flush_rbcd', 'modify_user', 'whoami', 'ldap-shell'], nargs='?', default='whoami')
