@@ -239,7 +239,7 @@ Here's an example of usage:
 C:\> .\PassTheCert.exe --server srv-ad.contoso.com --cert-path Z:\skywalker.pfx --add-account-to-group --target "CN=Domain Admins,CN=Users,DC=contoso,DC=com" --account "CN=simple_user,CN=Users,DC=contoso,DC=com"
 Success
 ```
-Also supported: `--remove-user-from-group to` cleanup
+Also supported: `--remove-account-from-group` to cleanup
 
 ### Set SPN to Kerberoast
 
