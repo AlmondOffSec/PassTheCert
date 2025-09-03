@@ -470,7 +470,7 @@ namespace PassTheCert
             Console.WriteLine("\t\tTarget of the attack. Should be the distinguished name of the group.");
             Console.WriteLine("\t--account ACCOUNT");
             Console.WriteLine("\t\tThe account added to the group. Should be the distinguished name of the account.");
-            Console.WriteLine("\t Also supported: --remove-user-from-group to cleanup");
+            Console.WriteLine("\t Also supported: --remove-account-from-group to cleanup");
             Console.WriteLine("\n\n");
             Console.WriteLine("TOGGLE ENABLE USER ACCOUNT OPTIONS: --account ACCOUNT");
             Console.WriteLine("\t--account ACCOUNT");
@@ -483,7 +483,7 @@ namespace PassTheCert
             Console.WriteLine("PassTheCert.exe --server ad.contoso.com --cert-path C:\\ad1.pfx --rbcd --target \"CN=AD1,OU=Domain Controllers,DC=contoso,DC=com\" --sid S-1-5-21-453406510-812318184-4183662089-1337");
             Console.WriteLine("\t└> Grants RBCD rights on domain controller AD1 to SID S-1-5-21-453406510-812318184-4183662089-1337.");
             Console.WriteLine("");
-            Console.WriteLine("PassTheCert.exe --server ad.contoso.com --cert-path C:\\ad1.pfx --rbcd --target \"CN=AD1,OU=Domain Controllers,DC=contoso,DC=com\" --restore --restore CN=AD1,OU=Domain_Controllers,DC=contoso,DC=com_msDS-AllowedToActOnBehalfOfOtherIdentity_20220415T224638Z.txt");
+            Console.WriteLine("PassTheCert.exe --server ad.contoso.com --cert-path C:\\ad1.pfx --rbcd --target \"CN=AD1,OU=Domain Controllers,DC=contoso,DC=com\" --restore CN=AD1,OU=Domain_Controllers,DC=contoso,DC=com_msDS-AllowedToActOnBehalfOfOtherIdentity_20220415T224638Z.txt");
             Console.WriteLine("\t└> Sets AD1's msDS-AllowedToActOnBehalfOfOtherIdentity attribute to the value stord in the given file.");
             Console.WriteLine("");
             Console.WriteLine("PassTheCert.exe --server ad.contoso.com --cert-path C:\\user.pfx --add-computer --computer-name DESKTOP-1337$");
